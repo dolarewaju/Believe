@@ -15,6 +15,8 @@ Every subcommand prints JSON.
   marc.py decide ID yes|no|new [--reason TEXT]
   marc.py add-cards JSON                 add research card(s); same format as scripts/invest.py add
   marc.py check-ticker TICKER            is it on the Trading 212 instrument list?
+  marc.py log AGENT "summary" [--status ok|error]
+                                         record a run (agents: job-scout, researcher, watcher, browser, voice)
 """
 import argparse
 import json
@@ -110,6 +112,13 @@ def cmd_check_ticker(a):
     out(invest.find_instrument(a.ticker.upper()))
 
 
+def cmd_log(a):
+    if a.agent not in ("job-scout", "researcher", "watcher", "browser", "voice", "cv-tailor"):
+        raise ValueError("unknown agent")
+    jobs.log_activity(a.agent, a.summary[:300], status=a.status)
+    out({"logged": True})
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -125,6 +134,9 @@ if __name__ == "__main__":
     p = sub.add_parser("decide"); p.add_argument("id"); p.add_argument("decision"); p.add_argument("--reason"); p.set_defaults(f=cmd_decide)
     p = sub.add_parser("add-cards"); p.add_argument("json"); p.set_defaults(f=cmd_add_cards)
     p = sub.add_parser("check-ticker"); p.add_argument("ticker"); p.set_defaults(f=cmd_check_ticker)
+    p = sub.add_parser("log", help="record an agent run on the Agents page")
+    p.add_argument("agent"); p.add_argument("summary"); p.add_argument("--status", default="ok", choices=["ok", "error"])
+    p.set_defaults(f=cmd_log)
     args = ap.parse_args()
     try:
         args.f(args)

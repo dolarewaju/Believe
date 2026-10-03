@@ -65,6 +65,31 @@ def save_json(path, data):
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+ACTIVITY = PRIV / "activity.jsonl"
+
+
+def log_activity(agent, summary, status="ok", **detail):
+    """Append one line to the private activity log shown on M.A.R.C's Agents page."""
+    ACTIVITY.parent.mkdir(parents=True, exist_ok=True)
+    entry = {"ts": datetime.now().isoformat(timespec="seconds"), "agent": agent, "status": status,
+             "summary": summary, **detail}
+    with ACTIVITY.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def read_activity(limit=200):
+    if not ACTIVITY.exists():
+        return []
+    lines = ACTIVITY.read_text(encoding="utf-8").splitlines()[-limit:]
+    out = []
+    for line in lines:
+        try:
+            out.append(json.loads(line))
+        except ValueError:
+            pass
+    return out
+
+
 def config():
     cfg = dict(DEFAULT_CONFIG)
     cfg.update(load_json(CONFIG, {}))
@@ -235,7 +260,11 @@ def import_alerts(items):
             found.append(make_job(it["url"], it["title"], it.get("company", ""), it.get("description", ""),
                                   it.get("source", "Alert"), it.get("location", ""),
                                   it.get("salary_min"), it.get("salary_max")))
-    return {"parsed": len(found), "added": merge(found)}
+    added = merge(found)
+    sources = sorted({j["source"] for j in found})
+    log_activity("job-scout", f"Read alerts: {len(found)} roles found, {added} new" + (f" ({', '.join(sources)})" if sources else ""),
+                 parsed=len(found), added=added)
+    return {"parsed": len(found), "added": added}
 
 
 # ------------------------------------------------------------------ score
@@ -400,6 +429,8 @@ def tailor():
                  status="queued", queued=datetime.now().isoformat(timespec="minutes"))
         made += 1
     save_json(STORE, store)
+    if made:
+        log_activity("cv-tailor", f"Prepared {made} tailored CV{'s' if made != 1 else ''} and cover note{'s' if made != 1 else ''}", made=made)
     return {"queued": made}
 
 

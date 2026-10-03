@@ -101,6 +101,9 @@ def add_cards(items):
         cards.append(c)
         added.append(c["name"])
     save_json(CARDS, cards)
+    if added:
+        from jobs import log_activity
+        log_activity("researcher", f"Added {len(added)} research card{'s' if len(added) != 1 else ''}: {', '.join(added)}", added=len(added))
     return {"added": added}
 
 

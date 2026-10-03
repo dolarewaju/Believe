@@ -279,6 +279,22 @@ body.v-listening .talk{border-color:var(--green);box-shadow:0 0 22px rgba(52,211
 .vform{display:flex;gap:6px;margin-top:10px}
 .vform input{flex:1;min-width:0;background:rgba(3,11,23,.7);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:7px 9px;font:12px var(--ui)}
 
+/* agents */
+#agents{grid-template-columns:minmax(0,1fr);gap:12px;align-content:start}
+.acards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.acard{border:1px solid var(--line);border-radius:10px;background:rgba(3,11,23,.55);padding:14px;display:flex;flex-direction:column;gap:8px}
+.acard header{display:flex;gap:10px;align-items:center}
+.acard h3{font:600 14px var(--ui)}.acard p{font-size:12px;color:#c9d9ea}
+.akv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:11.5px}.akv dt{color:var(--muted)}.akv dd{color:var(--text)}
+.week{display:flex;align-items:flex-end;gap:4px;height:34px}.week i{flex:1;background:var(--cyan);border-radius:3px 3px 0 0;opacity:.8;min-height:2px}
+.week i.z{background:var(--line);opacity:1}
+.aleg{display:flex;justify-content:space-between;font-size:9.5px;color:var(--dim)}
+.anote{font-size:11.5px;color:var(--amber)}
+.st-idle{color:var(--cyan-soft)}.st-working{color:var(--green)}.st-waiting,.st-attention{color:var(--amber)}.st-error{color:var(--red)}
+.logrow{display:grid;grid-template-columns:110px 92px 1fr;gap:10px;font-size:12px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:rgba(3,11,23,.45)}
+.logrow time{color:var(--muted)}
+@media (max-width:700px){.logrow{grid-template-columns:1fr}}
+
 /* placeholders */
 .ph-view{place-items:center;min-height:500px;text-align:center}
 .ph-view p{color:var(--muted);max-width:420px;margin-top:8px}
@@ -420,18 +436,13 @@ body.v-listening .talk{border-color:var(--green);box-shadow:0 0 22px rgba(52,211
 
   <div class="panel c5">
     <div class="ph"><h2>Active Agents</h2><button class="link" data-goto="agents">View all ›</button></div>
-    <div class="agents" id="agents"></div>
+    <div class="agents" id="agentsMini"></div>
   </div>
 
   <div class="panel c4">
-    <div class="ph"><h2>Mission Timeline</h2><span class="mu" style="font-size:11px">Today ▾</span></div>
-    <div class="tl">
-      <div class="tli"><time>09:00</time><i></i><b>Daily role sweep (7 sites)</b><span>Done</span></div>
-      <div class="tli"><time>10:00</time><i></i><b>Approve application batch</b><span>In 42m</span></div>
-      <div class="tli"><time>13:00</time><i class="am"></i><b>Follow-ups: 2 recruiters</b><span>In 3h</span></div>
-      <div class="tli"><time>18:00</time><i></i><b>Research cards: new batch</b><span>In 8h</span></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-top:14px"><span class="sample">SAMPLE DATA</span><button class="link">View full schedule ›</button></div>
+    <div class="ph"><h2>Mission Timeline</h2><span class="mu" style="font-size:11px">Coming up</span></div>
+    <div class="tl" id="timeline"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="link" data-goto="agents">All agents ›</button></div>
   </div>
 
   <div class="panel c3">
@@ -602,6 +613,19 @@ body.v-listening .talk{border-color:var(--green);box-shadow:0 0 22px rgba(52,211
   </div>
 </section>
 
+<!-- ---------- AGENTS ---------- -->
+<section class="view" id="agents">
+  <div class="panel">
+    <div class="ph"><h2>Agents</h2><span class="mu" style="font-size:11px" id="agentsUpdated"></span></div>
+    <p class="mu" style="font-size:12px">Each helper M.A.R.C uses: what it does, when it runs, what it did in the last 7 days, and whether it needs you. Nothing here can submit applications or trade.</p>
+  </div>
+  <div class="acards" id="agentCards"></div>
+  <div class="panel">
+    <div class="ph"><h2>Activity log</h2><span class="mu" style="font-size:11px">Newest first · stored on this laptop only</span></div>
+    <div class="list" id="agentLog"></div>
+  </div>
+</section>
+
 <!-- ---------- SKILLS ---------- -->
 <section class="view" id="skills" style="grid-template-columns:minmax(0,1fr);gap:12px">
   <div class="panel">
@@ -653,17 +677,7 @@ document.getElementById('skillCount').textContent=SKILLS.filter(s=>s.status==="I
 document.getElementById('skillsRow').textContent=`${SKILLS.filter(s=>s.status==="Installed").length} installed · ${SKILLS.filter(s=>s.status!=="Installed").length} skipped`;
 
 // ---- agents ----
-const AGENTS=[
-  ["Job Scout","Active","gr","M11 11m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0M20 20l-3.5-3.5"],
-  ["CV Tailor","Active","gr","M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5"],
-  ["Approvals","Waiting on you","am","M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"],
-  ["Researcher","Standby","cy","M3 17l6-6 4 4 8-8M15 7h6v6"],
-  ["Watcher","Standby","cy","M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6"],
-  ["Browser","Standby","vi","M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"]
-];
-document.getElementById('agents').innerHTML=AGENTS.map(([n,s,c,d])=>{
-  const bars=Array.from({length:40},()=>`<i style="height:${3+Math.round(Math.random()*14)}px"></i>`).join('');
-  return `<div class="agent"><span class="ico ${c}"><svg viewBox="0 0 24 24"><path d="${d}"/></svg></span><div style="min-width:0"><b>${n}</b><small class="${c}">${s}</small></div><span class="spark ${c}">${s==="Standby"?"":bars}</span></div>`}).join('');
+// Active Agents panel is filled by loadAgents() from live data.
 
 // ---- metric rings ----
 const RINGS=[["Response rate",18,"var(--cyan)","18%"],["Applied today (of 100)",62,"var(--green)","62"],["ISA goal (of £10k)",34,"var(--violet)","£3.4k"]];
@@ -692,7 +706,7 @@ function net(){const c=navigator.connection;const el=document.getElementById('ne
 net();addEventListener('online',net);addEventListener('offline',net);if(navigator.connection)navigator.connection.addEventListener('change',net);
 
 // ---- view switching ----
-const PH={agents:["Agents","Each agent's status and recent runs."],soon:["Coming later","Placeholder: built after Modules 1 and 2."]};
+const PH={soon:["Coming later","Placeholder: built after Modules 1 and 2."]};
 function show(v){document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
   const real=document.getElementById(v);
   if(real&&v!=='ph'){real.classList.add('on');}else{const [t,x]=PH[v]||PH.soon;document.getElementById('phTitle').textContent=t;document.getElementById('phText').textContent=x;document.getElementById('ph').classList.add('on');}}
@@ -711,7 +725,7 @@ async function loadJobs(){
     document.getElementById('srcStatus').textContent='Sources: job alert emails (via Claude) + links you add';
     document.getElementById('jobStats').innerHTML=[['Found',st.found],['Discarded',st.discarded],['In queue',st.queued],['Ready to submit',st.approved],['Applied today',st.applied_today],['Applied this week',st.applied_week],['Response rate',st.response_rate+'%']].map(([l,v])=>`<div class="stat"><small>${l}</small><b>${v}</b></div>`).join('');
     document.querySelector('.nav[data-view="jobs"] .n').textContent=st.queued;
-    renderJobs();liveDash();
+    renderJobs();liveDash();loadAgents();
   }catch(e){LOCAL=false;
     document.getElementById('jobStats').innerHTML='';
     document.getElementById('jobList').innerHTML=`<div class="empty">Your job data stays on your laptop.<br>Open M.A.R.C with <b>Open MARC.bat</b> to see your queue.</div>`;
@@ -979,6 +993,46 @@ vEl('morningPlay').addEventListener('click',speakBriefing);
 vEl('morningSkip').addEventListener('click',()=>{store.set('marcBriefDay',todayKey());vEl('morningBar').style.display='none';});
 READY.then(()=>{vState(LOCAL?'idle':'offline');
   if(LOCAL&&store.get('marcBriefDay')!==todayKey()){const h=new Date().getHours();vEl('morningHi').textContent=h<12?'GOOD MORNING':h<18?'GOOD AFTERNOON':'GOOD EVENING';vEl('morningBar').style.display='block';}});
+
+// ================= AGENTS =================
+const AICON={search:'M11 11m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0M20 20l-3.5-3.5',doc:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',check:'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9',globe:'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',chart:'M3 17l6-6 4 4 8-8M15 7h6v6',eye:'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6',mic:'M9 3h6v11H9zM5 11a7 7 0 0 0 14 0M12 18v3'};
+const ASTAT={idle:['Idle','cy'],working:['Working','gr'],waiting:['Waiting on you','am'],attention:['Needs a look','am'],error:['Error','rd']};
+const AACT={'job-scout':['Import now','voice','Import my job alerts.'],'cv-tailor':['Re-score & prepare','rescore'],'approvals':['Open queue','goto:jobs'],'browser':['How it works','info','Say "start applying" in a Claude session in your command-centre folder. Claude fills each employer form in Chrome and you click Submit.'],'researcher':['Research now','voice','Research 3 new individual stock ideas for my research cards.'],'watcher':['Check now','voice','Check the stocks on my YES watchlist for major news since each card was researched, and summarise it briefly.'],'voice':['Talk','listen']};
+const when=ts=>{if(!ts)return'Not yet';const d=new Date(ts.length<=10?ts+'T12:00':ts);const days=Math.round((new Date().setHours(0,0,0,0)-new Date(d).setHours(0,0,0,0))/864e5);const t=ts.length>10?d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';return (days===0?'Today':days===1?'Yesterday':d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}))+(t?' '+t:'');};
+let AG=null;
+async function loadAgents(){
+  await READY;
+  if(!LOCAL){document.getElementById('agentsMini').innerHTML='<div class="empty" style="grid-column:1/-1">Live agent status shows on your laptop.</div>';document.getElementById('timeline').innerHTML='<small class="mu">Open M.A.R.C on your laptop for your schedule.</small>';return;}
+  try{AG=await api('/api/agents');}catch(e){return;}
+  const bars=w=>{const m=Math.max(1,...w);return w.map(n=>`<i class="${n?'':'z'}" style="height:${n?Math.max(12,Math.round(n/m*100)):6}%" title="${n}"></i>`).join('');};
+  document.getElementById('agentsMini').innerHTML=AG.agents.filter(a=>a.id!=='watcher').slice(0,6).map(a=>{const [l,c]=ASTAT[a.status]||ASTAT.idle;return `<div class="agent" title="${esc(a.what)}"><span class="ico ${c}"><svg viewBox="0 0 24 24"><path d="${AICON[a.icon]}"/></svg></span><div style="min-width:0"><b>${esc(a.name)}</b><small class="${c}">${l}</small></div><span class="spark ${c}" style="display:flex;align-items:flex-end;gap:2px;height:18px">${a.week.map(n=>`<i style="width:6px;height:${n?Math.max(4,Math.round(n/Math.max(1,...a.week)*18)):2}px;opacity:${n?.9:.3}"></i>`).join('')}</span></div>`;}).join('');
+  const items=[];for(const a of AG.agents){if(a.next_run)items.push([a.next_run,a.name,a.id==='job-scout'?'Import job alerts':a.id==='researcher'?'3 new research cards':'Watchlist news check']);}
+  const q=AG.agents.find(a=>a.id==='approvals');const nowIso=new Date().toISOString();
+  const tl=items.filter((x,i,s)=>s.findIndex(y=>y[0]===x[0]&&y[2]===x[2])===i).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,3).map(([t,n,w])=>({t,w,am:false}));
+  if(q&&q.status==='waiting')tl.unshift({t:nowIso,w:q.metric.split(' · ')[0]+' for approval',am:true,now:true});
+  document.getElementById('timeline').innerHTML=tl.slice(0,4).map(x=>`<div class="tli"><time>${x.now?'Now':new Date(x.t).toLocaleDateString('en-GB',{weekday:'short'})+'<br>'+new Date(x.t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</time><i class="${x.am?'am':''}"></i><b>${esc(x.w)}</b><span>${x.now?'You':'Auto'}</span></div>`).join('');
+  document.getElementById('agentsUpdated').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  const lbl=AG.days.map(d=>new Date(d+'T12:00').toLocaleDateString('en-GB',{weekday:'narrow'}));
+  document.getElementById('agentCards').innerHTML=AG.agents.map(a=>{const [l,c]=ASTAT[a.status]||ASTAT.idle;const act=AACT[a.id];return `<article class="acard" data-agent="${a.id}">
+    <header><span class="ico ${c}"><svg viewBox="0 0 24 24"><path d="${AICON[a.icon]}"/></svg></span><div style="flex:1;min-width:0"><h3>${esc(a.name)}</h3><small class="st st-${a.status}">${l}</small></div></header>
+    <p>${esc(a.what)}</p>
+    <dl class="akv"><dt>Runs</dt><dd>${esc(a.schedule)}</dd>${a.next_run?`<dt>Next</dt><dd>${when(a.next_run)}</dd>`:''}<dt>Last</dt><dd>${a.last?when(a.last.ts)+' · '+esc(a.last.summary).slice(0,90):'No activity logged yet'}</dd><dt>7 days</dt><dd>${esc(a.metric)}</dd></dl>
+    <div><div class="week">${bars(a.week)}</div><div class="aleg">${lbl.map(x=>`<span>${x}</span>`).join('')}</div></div>
+    ${a.note?`<div class="anote">${esc(a.note)}</div>`:''}
+    <div class="acts"><button class="btn sm" data-act="${a.id}">${act[0]}</button></div></article>`;}).join('');
+  const nm=Object.fromEntries(AG.agents.map(a=>[a.id,a.name]));
+  document.getElementById('agentLog').innerHTML=AG.log.length?AG.log.map(e=>`<div class="logrow"><time>${when(e.ts)}</time><b class="${e.status==='error'?'rd':'cy'}">${esc(nm[e.agent]||e.agent)}</b><span>${esc(e.summary)}</span></div>`).join(''):'<div class="empty">Nothing logged yet. Entries appear as agents run.</div>';
+}
+document.getElementById('agents').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const [,kind,arg]=AACT[b.dataset.act];
+  if(kind==='voice'){toast('Sent to M.A.R.C. Watch the chat panel.');return ask(arg);}
+  if(kind==='listen')return listen();
+  if(kind==='info')return toast(arg);
+  if(kind.startsWith('goto:'))return document.querySelector(`.nav[data-view="${kind.slice(5)}"]`).click();
+  if(kind==='rescore'){b.disabled=true;b.textContent='Working…';try{const r=await api('/api/run',{step:'score'});const t=await api('/api/run',{step:'tailor'});toast(`Kept ${r.score.kept}, discarded ${r.score.discarded}, prepared ${t.tailor.queued}.`);}catch(err){toast('Problem: '+err.message);}loadAgents();loadJobs();}
+});
+document.querySelector('.nav[data-view="agents"]').addEventListener('click',()=>setTimeout(loadAgents,0));
+setInterval(()=>{if(!document.hidden)loadAgents();},60000);
 
 // ---- dashboard: real numbers when running locally ----
 async function liveDash(){

@@ -65,12 +65,14 @@ def run_voice(task_id, text, session):
         p = subprocess.run(cmd, input=text, capture_output=True, text=True, encoding="utf-8", cwd=ROOT,
                            timeout=600, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         data = json.loads(p.stdout or "{}")
+        jobs.log_activity("voice", f"“{text[:80]}”", status="error" if data.get("is_error") else "ok")
         VOICE_TASKS[task_id] = {
             "status": "error" if data.get("is_error") else "done",
             "reply": data.get("result") or (p.stderr.strip()[-300:] or "Sorry, I couldn't get an answer."),
             "session": data.get("session_id") or session,
         }
     except subprocess.TimeoutExpired:
+        jobs.log_activity("voice", f"“{text[:80]}” timed out", status="error")
         VOICE_TASKS[task_id] = {"status": "error", "reply": "That took too long, so I stopped. Try a smaller request.", "session": session}
     except Exception as e:
         VOICE_TASKS[task_id] = {"status": "error", "reply": f"Voice link problem: {e}", "session": session}
@@ -188,6 +190,8 @@ class Handler(SimpleHTTPRequestHandler):
                                "stats": stats()})
         if path == "/api/jobs":
             return self._json(jobs_view())
+        if path == "/api/agents":
+            return self._json(agents_view())
         if path == "/api/briefing":
             return self._json({"text": briefing_text()})
         if path == "/api/voice":
@@ -270,7 +274,119 @@ def update(data):
             if field in data:
                 j[field] = data[field]
     jobs.save_json(jobs.STORE, store)
+    if status == "applied" and data.get("via") == "assisted-apply":
+        names = [f"{j['title']} at {j['company'].split('(')[0].strip()}" for j in store if j["id"] in ids]
+        jobs.log_activity("browser", "Filled and you submitted: " + "; ".join(names), applied=len(names))
     return {"updated": len(ids)}
+
+
+# ------------------------------------------------------------------ agents overview
+
+AGENTS = [
+    {"id": "job-scout", "name": "Job Scout", "icon": "search", "schedule": "Weekdays 8am",
+     "what": "Reads your job-alert emails and adds new roles to the queue."},
+    {"id": "cv-tailor", "name": "CV Tailor", "icon": "doc", "schedule": "After every import",
+     "what": "Scores each role and builds a tailored CV and cover note."},
+    {"id": "approvals", "name": "Approvals", "icon": "check", "schedule": "Waits for you",
+     "what": "Roles that need your yes or no before applying."},
+    {"id": "browser", "name": "Browser", "icon": "globe", "schedule": "When you say \"start applying\"",
+     "what": "Fills employer application forms in Chrome. You click Submit."},
+    {"id": "researcher", "name": "Researcher", "icon": "chart", "schedule": "Mondays 9am",
+     "what": "Researches 3 new stock ideas and adds research cards."},
+    {"id": "watcher", "name": "Watcher", "icon": "eye", "schedule": "Mondays 9am",
+     "what": "Checks your YES watchlist for major news."},
+    {"id": "voice", "name": "Voice", "icon": "mic", "schedule": "When you talk",
+     "what": "Answers and acts on what you say to M.A.R.C."},
+]
+
+
+def next_run(agent_id):
+    from datetime import datetime
+    now = datetime.now()
+    if agent_id == "job-scout":
+        d = now.replace(hour=8, minute=0, second=0, microsecond=0)
+        if d <= now:
+            d += timedelta(days=1)
+        while d.weekday() > 4:
+            d += timedelta(days=1)
+        return d.isoformat(timespec="minutes")
+    if agent_id in ("researcher", "watcher"):
+        d = now.replace(hour=9, minute=0, second=0, microsecond=0)
+        while d.weekday() != 0 or d <= now:
+            d += timedelta(days=1)
+        return d.isoformat(timespec="minutes")
+    return None
+
+
+def agents_view():
+    from datetime import datetime
+    store = jobs.load_json(jobs.STORE, [])
+    cards = jobs.load_json(invest.CARDS, [])
+    log = jobs.read_activity(400)
+    today = date.today()
+    days = [(today - timedelta(days=i)).isoformat() for i in range(6, -1, -1)]
+
+    def per_day(dates):
+        return [sum(1 for x in dates if x and x[:10] == d) for d in days]
+
+    def last(agent):
+        rows = [e for e in log if e["agent"] == agent]
+        return rows[-1] if rows else None
+
+    assisted = [j for j in store if j.get("applied") and "assisted apply" in (j.get("notes") or "").lower()]
+    found = [j.get("found") for j in store if j.get("source") not in ("Manual", "Voice")]
+    queued_at = [j.get("queued") for j in store if j.get("queued")]
+    voice_rows = [e for e in log if e["agent"] == "voice"]
+    queued = [j for j in store if j["status"] == "queued"]
+    new_cards = [c for c in cards if c["status"] == "new"]
+    out = []
+    for a in AGENTS:
+        aid, rec = a["id"], last(a["id"])
+        v = {**a, "next_run": next_run(aid), "last": rec, "status": "idle", "metric": "", "week": [0] * 7}
+        if aid == "job-scout":
+            v["week"] = per_day(found)
+            v["metric"] = f"{sum(v['week'])} roles found this week"
+            due = datetime.now().weekday() < 5 and datetime.now().hour >= 9
+            if rec and rec["status"] == "error":
+                v["status"] = "error"
+            elif due and not any(e["agent"] == "job-scout" and e["ts"][:10] == today.isoformat() for e in log):
+                v["status"] = "attention"
+                v["note"] = "No import logged today. Is the Claude app open? Run it from Scheduled in the Claude sidebar."
+        elif aid == "cv-tailor":
+            v["week"] = per_day(queued_at)
+            v["metric"] = f"{sum(v['week'])} CVs and notes this week"
+        elif aid == "approvals":
+            v["week"] = per_day([j.get("approved") for j in store])
+            v["metric"] = f"{len(queued)} waiting · {sum(v['week'])} approved this week"
+            v["status"] = "waiting" if queued else "idle"
+            if queued:
+                oldest = min(j.get("found", "") for j in queued)
+                v["note"] = f"Oldest has waited since {oldest}."
+        elif aid == "browser":
+            v["week"] = per_day([j["applied"] for j in assisted])
+            v["metric"] = f"{len(assisted)} filled in total · {sum(v['week'])} this week"
+            if assisted and not rec:
+                lastj = max(assisted, key=lambda j: j["applied"])
+                v["last"] = {"ts": lastj["applied"], "summary": f"{lastj['title']} at {lastj['company'].split('(')[0].strip()}", "status": "ok"}
+        elif aid == "researcher":
+            v["week"] = per_day([c.get("created") for c in cards])
+            v["metric"] = f"{len(new_cards)} cards to review · {len(cards)} researched"
+            v["status"] = "waiting" if new_cards else "idle"
+            if not rec and cards:
+                v["last"] = {"ts": max(c["created"] for c in cards), "summary": f"{len(cards)} cards so far", "status": "ok"}
+        elif aid == "watcher":
+            yes = [c["name"] for c in cards if c["status"] == "yes"]
+            v["metric"] = f"Watching {len(yes)} on your YES list"
+            v["week"] = per_day([e["ts"] for e in log if e["agent"] == "watcher"])
+        elif aid == "voice":
+            v["week"] = per_day([e["ts"] for e in voice_rows])
+            v["metric"] = f"{v['week'][-1]} requests today · {sum(v['week'])} this week"
+            if VOICE_LOCK.locked():
+                v["status"] = "working"
+        if rec and rec.get("status") == "error" and v["status"] == "idle":
+            v["status"] = "error"
+        out.append(v)
+    return {"agents": out, "days": days, "log": list(reversed(log[-40:]))}
 
 
 if __name__ == "__main__":

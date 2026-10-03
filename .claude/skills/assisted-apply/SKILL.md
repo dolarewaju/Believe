@@ -23,7 +23,7 @@ Project rule (CLAUDE.md): **the owner does the final click.** You fill in the fo
 3. Personal-data check: only enter fields from `apply-profile.json`. For optional equality and diversity questions, use the user's saved choice (default "Prefer not to say").
 4. Scroll through and take a screenshot. Tell the user in one line: "Filled: <role> at <company>. Check the form in Chrome and click Submit when you're happy." List anything left blank and why.
 5. Wait for the user. When they say it's submitted (or the page shows a confirmation), mark it applied:
-   `POST /api/jobs/update {"ids": ["<id>"], "status": "applied"}`. This sets the follow-up date for 7 days later.
+   `POST /api/jobs/update {"ids": ["<id>"], "status": "applied", "via": "assisted-apply", "notes": "Applied via <site> (assisted apply)"}`. This sets the follow-up date for 7 days later and records the run on the Agents page.
 6. Close the tab and move to the next approved role, if the user wants to continue.
 
 ## Practical tips
