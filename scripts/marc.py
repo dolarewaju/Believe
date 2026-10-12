@@ -25,6 +25,9 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+# Windows pipes default to cp1252; job titles and notes contain characters like "→" and "£".
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 import invest  # noqa: E402
 import jobs  # noqa: E402
 import server  # noqa: E402
