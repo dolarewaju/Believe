@@ -50,7 +50,7 @@ def sections(master, headline, v):
         ("Key Skills", "skills", v["skills"]),
         ("Key Achievements", "bullets", v["key_achievements"]),
         ("Experience", "jobs", master["experience"]),
-        ("Professional Development", "jobs", [master["development"]]),
+        ("Professional Development", "jobs", dev if isinstance(dev := master["development"], list) else [dev]),
         ("Education", "edu", master["education"]),
         ("Interests", "para", master["interests"]),
     ]
