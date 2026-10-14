@@ -3,8 +3,7 @@
   "configurations": [
     {
       "name": "marc",
-      "runtimeExecutable": "py",
-      "runtimeArgs": ["-3.12", "-m", "http.server", "8765", "--bind", "127.0.0.1"],
+      "url": "http://127.0.0.1:8765",
       "port": 8765
     }
   ]
