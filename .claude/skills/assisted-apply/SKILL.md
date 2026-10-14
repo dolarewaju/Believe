@@ -31,6 +31,8 @@ Project rule (CLAUDE.md): **the owner does the final click.** You fill in the fo
 - After filling, read the inputs back (e.g. via the page's form values) and show the user a table of what was entered.
 - Many sites show no confirmation message and simply clear the form after Submit. Ask the user to watch for a confirmation email.
 - If fields clear themselves after `form_input` (seen on SW6's site), set the values with a small script that uses the input's native value setter and fires `input` and `change` events, then read the values back.
+- React forms (Ashby, new Greenhouse) can show script-set values but ignore them on submit. Prefer `form_input`, or click and type for real, and read values back before handover. To clear a box, never send `ctrl+a` as a key (it can type a stray "a"): triple-click it or use Backspace.
+- Check the CV format the form asks for. Some (e.g. Birdie on Ashby) want PDF; convert the .docx with Word first.
 - SW6 Associates is one agency team: apply to a handful of distinct, best-fit listings, not every near-duplicate.
 
 ## Rules
