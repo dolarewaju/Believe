@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-02",
+  "updated": "2026-10-20",
   "installed": [
     {
       "name": "stop-slop",
@@ -101,6 +101,18 @@
       "modules": [
         "Job applications"
       ]
+    },
+    {
+      "name": "linkedin-agent",
+      "purpose": "Drafts LinkedIn posts, comments, replies, DMs/connection notes, profile score and weekly plan; humanizer strips AI tells. Writes only, never posts.",
+      "source": "https://github.com/Jakeschincariol/linkedin-agent-skill (commit add2c23)",
+      "license": "MIT",
+      "installed": "2026-10-20",
+      "location": ".claude/skills/li-* (11 skills)",
+      "modules": [
+        "Job applications"
+      ],
+      "review": "Text only. 2 local Python scripts (no network). No API keys, no browser login, no auto-posting; DMs capped at 20/day and sent by hand. Writes notes to ~/.claude/linkedin/."
     }
   ],
   "pending": [
