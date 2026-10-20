@@ -9,3 +9,6 @@ __pycache__/
 
 # Duplicate licence copies (originals in docs/licenses)
 .claude/skills/_licenses/
+
+# interview-coach skill session file (personal interview data)
+coaching_state*.md

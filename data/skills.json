@@ -113,6 +113,18 @@
         "Job applications"
       ],
       "review": "Text only. 2 local Python scripts (no network). No API keys, no browser login, no auto-posting; DMs capped at 20/day and sent by hand. Writes notes to ~/.claude/linkedin/."
+    },
+    {
+      "name": "interview-coach",
+      "purpose": "Interview prep and coaching: mock interviews with scored feedback, storybank (STAR stories), company prep, debriefs, questions to ask, salary and offer negotiation, outreach coaching.",
+      "source": "https://github.com/noamseg/interview-coach-skill (commit 634a8dd)",
+      "license": "MIT",
+      "installed": "2026-10-20",
+      "location": ".claude/skills/interview-coach",
+      "modules": [
+        "Job applications"
+      ],
+      "review": "Text and instructions only, no scripts. Uses web search/fetch for company research. Saves progress to coaching_state.md (git-ignored, personal). Repo's own permissions file not copied."
     }
   ],
   "pending": [
